@@ -1,0 +1,44 @@
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  become: true
+
+- name: Upgrade all packages to the latest version
+  ansible.builtin.apt:
+    upgrade: dist
+  become: true
+
+- name: Install essential packages
+  ansible.builtin.apt:
+    name:
+      - git
+      - curl
+      - vim
+      - htop
+      - ufw
+      - fail2ban
+    state: present
+  become: true
+
+- name: Enable and start UFW
+  ansible.builtin.ufw:
+    state: enabled
+    policy: deny
+  become: true
+
+- name: Allow SSH through UFW
+  ansible.builtin.ufw:
+    name: OpenSSH
+    rule: allow
+    port: 22
+    proto: tcp
+  become: true
+
+- name: Disable SSH password authentication
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^PasswordAuthentication'
+    line: 'PasswordAuthentication no'
+    backup: yes
+  become: true
