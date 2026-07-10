@@ -1,0 +1,3 @@
+kubeconfig_path: "{{ playbook_dir }}/kubeconfig-k3s.yaml"
+letsencrypt_email: "emailul-tau@example.com" # Replace with your email address
+domain_name: "vault.domeniultau.com" # Replace with your domain name
