@@ -1,0 +1,5 @@
+- name: Install k3s on the Kubernetes node
+  hosts: k3s
+  become: true
+  roles:
+    - k3s
