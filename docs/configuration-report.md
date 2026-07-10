@@ -8,10 +8,10 @@ Detailed log of the infrastructure build process, including technical decisions,
 
 **VMs created**:
 
-| VM | vCPU | RAM | Disk | IP | Role |
-|---|---|---|---|---|---|
-| `k3s-node` | 4 | 8GB | 40GB | 192.168.1.20 | Kubernetes cluster |
-| `jenkins-controller` | 2 | 4GB | 30GB | 192.168.1.21 | CI/CD (next stage) |
+| VM                   | vCPU | RAM | Disk | IP           | Role               |
+|----------------------|------|-----|------|--------------|--------------------|
+| `k3s-node`           | 4    | 8GB | 40GB | 192.168.1.20 | Kubernetes cluster |
+| `jenkins-controller` | 2    | 4GB | 30GB | 192.168.1.21 | CI/CD (next stage) |
 
 Both run Ubuntu Server 26.04, fresh install, with a `tiberiu` user, SSH access via public key (imported from GitHub), password login disabled.
 
