@@ -1,0 +1,7 @@
+- name: Configure cert-manager and Let's Encrypt with Cloudflare DNS
+  hosts: localhost
+  connection: local
+  vars_files:
+    - ../vars/vault.yml
+  roles:
+    - cert-manager

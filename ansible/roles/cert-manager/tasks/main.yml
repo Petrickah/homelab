@@ -1,0 +1,33 @@
+- name: Install cert-manager CRDs and controller
+  kubernetes.core.k8s:
+    state: present
+    src: https://github.com/cert-manager/cert-manager/releases/download/v1.16.2/cert-manager.yaml
+    kubeconfig: "{{ kubeconfig_path }}"
+
+- name: Wait for cert-manager to be ready
+  command: >
+    kubectl --kubeconfig={{ kubeconfig_path }}
+    wait --for=condition=Available deployment/cert-manager-webhook
+    -n cert-manager --timeout=120s
+  changed_when: false
+
+- name: Create Cloudflare API token secret
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: cloudflare-api-token
+        namespace: cert-manager
+      type: Opaque
+      stringData:
+        api-token: "{{ cloudflare_api_token }}"
+    kubeconfig: "{{ kubeconfig_path }}"
+  no_log: true
+
+- name: Apply ClusterIssuer for Let's Encrypt with Cloudflare DNS
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('template', 'cluster-issuer.yaml.j2') | from_yaml }}"
+    kubeconfig: "{{ kubeconfig_path }}"
