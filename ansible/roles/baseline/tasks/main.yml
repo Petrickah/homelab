@@ -21,18 +21,17 @@
     state: present
   become: true
 
+- name: Allow SSH through UFW
+  ansible.builtin.ufw:
+    rule: allow
+    port: 22
+    proto: tcp
+  become: true
+
 - name: Enable and start UFW
   ansible.builtin.ufw:
     state: enabled
     policy: deny
-  become: true
-
-- name: Allow SSH through UFW
-  ansible.builtin.ufw:
-    name: OpenSSH
-    rule: allow
-    port: 22
-    proto: tcp
   become: true
 
 - name: Disable SSH password authentication
