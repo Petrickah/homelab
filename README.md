@@ -5,38 +5,38 @@ Personal project built to prepare for a **Junior DevOps Engineer** role, running
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        Proxmox VE (host)                     │
-│                                                               │
-│  ┌──────────────────────┐      ┌──────────────────────────┐  │
-│  │   k3s-node             │      │   jenkins-controller       │  │
+┌─────────────────────────────────────────────────────────────────────┐
+│                        Proxmox VE (host)                            │
+│                                                                     │
+│  ┌─────────────────────────┐      ┌──────────────────────────────┐  │
+│  │   k3s-node              │      │   jenkins-controller         │  │
 │  │   192.168.1.20          │      │   192.168.1.21               │  │
 │  │   4 vCPU / 8GB RAM      │      │   2 vCPU / 4GB RAM           │  │
 │  │                         │      │                              │  │
 │  │   Ubuntu Server 26.04   │      │   Ubuntu Server 26.04        │  │
 │  │   ├── k3s (Kubernetes)  │      │   (Jenkins — in progress)    │  │
 │  │   ├── Traefik (Ingress) │      │                              │  │
-│  │   ├── cert-manager      │      └──────────────────────────┘  │
-│  │   ├── Vaultwarden       │                                    │
-│  │   └── Portainer         │                                    │
-│  └──────────────────────┘                                    │
-└─────────────────────────────────────────────────────────────┘
+│  │   ├── cert-manager      │      └──────────────────────────────┘  │
+│  │   ├── Vaultwarden       │                                        │
+│  │   └── Portainer         │                                        │
+│  └─────────────────────────┘                                        │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Tech stack
 
-| Component | Role |
-|---|---|
-| Proxmox VE | Hypervisor, hosts the VMs |
-| Ubuntu Server 26.04 | OS for all VMs |
-| Ansible | Automated provisioning, configuration, secrets management |
-| k3s | Lightweight Kubernetes distribution |
-| Traefik | Ingress Controller (bundled with k3s) |
-| cert-manager | Automated TLS certificate issuance (Let's Encrypt) |
-| Cloudflare | DNS provider, used for the DNS-01 challenge |
-| Vaultwarden | Self-hosted password manager (Bitwarden-compatible server) |
-| Portainer | Kubernetes cluster management UI |
-| Jenkins | CI/CD (in progress) |
+| Component           | Role                                                       |
+|---------------------|------------------------------------------------------------|
+| Proxmox VE          | Hypervisor, hosts the VMs                                  |
+| Ubuntu Server 26.04 | OS for all VMs                                             |
+| Ansible             | Automated provisioning, configuration, secrets management  |
+| k3s                 | Lightweight Kubernetes distribution                        |
+| Traefik             | Ingress Controller (bundled with k3s)                      |
+| cert-manager        | Automated TLS certificate issuance (Let's Encrypt)         |
+| Cloudflare          | DNS provider, used for the DNS-01 challenge                |
+| Vaultwarden         | Self-hosted password manager (Bitwarden-compatible server) |
+| Portainer           | Kubernetes cluster management UI                           |
+| Jenkins             | CI/CD (in progress)                                        |
 
 ## Repository structure
 
