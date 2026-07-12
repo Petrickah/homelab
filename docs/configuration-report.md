@@ -184,7 +184,113 @@ kubectl logs -n portainer -l app=portainer --tail=50
 
 The token expires after about 5 minutes; if it does, deleting the pod (`kubectl delete pod ...`) triggers an automatic recreation (via the Deployment) with a fresh token.
 
-## 8. Key concepts to mention in the interview
+## 8. Jenkins — CI/CD
+
+### Installation via Ansible
+
+Jenkins was installed on the dedicated `jenkins-controller` VM (192.168.1.21), automated through a new Ansible role: Java (OpenJDK 21, required by current Jenkins LTS), the Jenkins apt repository and GPG key, the `jenkins` package itself, a UFW rule opening port 8080, and enabling the systemd service.
+
+### Issue — 404 on apt repository (flat repository structure)
+
+```
+Failed to fetch https://pkg.jenkins.io/debian-stable/dists/stable/InRelease  404  Not Found
+```
+
+**Cause**: the Jenkins apt repository is a **flat repository** — packages sit directly at the repository root, with no `dists/<suite>/<component>/` hierarchy like a standard Debian repo. The initial `deb822_repository` task was configured with `suites: stable` and `components: [main, contrib, non-free]`, which made apt look for a standard suite structure that doesn't exist for this repo — hence the 404 on `dists/stable/InRelease`.
+
+**Fix**: matched the official Jenkins install command (`deb [...] https://pkg.jenkins.io/debian-stable binary/`), which uses the `binary/` suffix — the marker for a flat repository. In `deb822_repository` terms, that means setting `suites: binary/` and removing `components` entirely, since a flat repo has no components:
+
+```yaml
+- name: Add Jenkins Repository
+  deb822_repository:
+    name: jenkins
+    types: deb
+    uris: https://pkg.jenkins.io/debian-stable
+    suites: binary/
+    signed_by: https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key
+  become: true
+```
+
+**Lesson**: not all third-party apt repositories follow the standard Debian layout — tools like Jenkins, Docker, and HashiCorp often ship flat repositories for simplicity. The `binary/` suffix (in place of a real suite name) is the distinguishing signal.
+
+### Initial setup
+
+Standard Jenkins setup wizard: unlock using the initial admin password (`/var/lib/jenkins/secrets/initialAdminPassword`, read via SSH), "Install suggested plugins", admin account creation.
+
+### kubectl on the controller
+
+Since the pipeline runs directly on the Jenkins controller (`agent any`, no separate build agents — a deliberate scope decision, see below), `kubectl` needed to be installed on `jenkins-controller` itself. Added as an extra task in the `jenkins` Ansible role, downloading the binary directly from `dl.k8s.io`.
+
+### Credentials management
+
+The `kubeconfig-k3s.yaml` file was uploaded to Jenkins as a **Secret file** credential (ID: `kubeconfig-k3s`), through **Manage Jenkins → Credentials**. The pipeline references it only by ID via the `withKubeConfig` step (from the Kubernetes CLI plugin) — the actual file contents are never exposed in the Jenkinsfile or in build logs. This mirrors the same secrets-management principle already applied with Ansible Vault, now at the CI/CD layer: no secret ever hardcoded, anywhere in the pipeline definition.
+
+### Pipeline
+
+Job `vaultwarden-deploy`, configured as **Pipeline script from SCM**, pointing at the `Jenkinsfile` at the repository root. Declarative pipeline with four stages:
+
+```groovy
+pipeline {
+    agent any
+    stages {
+        stage('Checkout') {
+            steps { checkout scm }
+        }
+        stage('Validate manifests') {
+            steps {
+                withKubeConfig([credentialsId: 'kubeconfig-k3s']) {
+                    sh 'kubectl apply --dry-run=client -f k8s/vaultwarden/'
+                }
+            }
+        }
+        stage('Deploy Vaultwarden') {
+            steps {
+                withKubeConfig([credentialsId: 'kubeconfig-k3s']) {
+                    sh 'kubectl apply -f k8s/vaultwarden/'
+                }
+            }
+        }
+        stage('Verify rollout') {
+            steps {
+                withKubeConfig([credentialsId: 'kubeconfig-k3s']) {
+                    sh 'kubectl rollout status deployment/vaultwarden -n vaultwarden --timeout=60s'
+                }
+            }
+        }
+    }
+    post {
+        success { echo 'Deployment finished successfully.' }
+        failure { echo 'Deployment failed — check the logs above.' }
+    }
+}
+```
+
+**Design notes**:
+- `--dry-run=client` runs first as a fail-fast validation step, catching manifest syntax errors before anything is actually applied to the cluster.
+- `withKubeConfig` injects the credential as a temporary `KUBECONFIG` environment variable, scoped only to that steps block.
+- `Verify rollout` explicitly confirms the deployment reached its desired state, rather than assuming success just because `kubectl apply` returned without error.
+
+**First run**: succeeded end to end on the first attempt. The log showed `unchanged` for every resource, since the manifests were already applied manually beforehand — a concrete demonstration of idempotency at the `kubectl apply` level, the same principle already seen with Ansible's `creates:`.
+
+### Automatic trigger — Poll SCM
+
+A GitHub webhook was considered but deliberately ruled out: a webhook requires GitHub to reach Jenkins over the public internet, which would mean exposing the Jenkins controller publicly — the same exposure risk already avoided earlier with Vaultwarden (Cloudflare Tunnel triggering a phishing flag). Consistent with that decision, **Poll SCM** was used instead: Jenkins periodically checks the repository for changes ("pull" model) rather than requiring an inbound public endpoint.
+
+Configured with schedule:
+```
+TZ=Europe/Bucharest
+H/5 * * * *
+```
+
+The explicit `TZ` setting avoids ambiguity in build logs, since Jenkins would otherwise use the server's default timezone rather than the local one.
+
+**Verified**: a comment-only commit to `k8s/vaultwarden/service.yaml` triggered an automatic build within the polling interval, with no manual "Build Now" click — confirming a fully closed CI/CD loop from `git push` to a verified rollout on the cluster.
+
+### Scope decision — no separate build agents
+
+The pipeline runs directly on the Jenkins controller (`agent any`), rather than on a separate build agent/worker. In a production setup, the standard pattern separates the **controller** (orchestration only) from one or more **agents** (actual step execution) — either static (a dedicated VM with tools preinstalled) or dynamic (an ephemeral container spun up per build, e.g. a `kubectl`-equipped image, torn down afterward). For a single-VM, single-cluster homelab, this added complexity wasn't worth the practical benefit; the trade-off was made consciously and is worth stating explicitly in an interview, the same way the `cluster-admin` RBAC choice for Portainer was.
+
+## 9. Key concepts to mention in the interview
 
 - **Idempotency** in Ansible (`creates:`, module design) — repeated runs don't produce side effects
 - **Operation order matters**: the firewall lockout as a concrete example of why task sequencing isn't just stylistic
@@ -192,10 +298,15 @@ The token expires after about 5 minutes; if it does, deleting the pod (`kubectl 
 - **Least privilege**: applied conceptually to sudoers and explicitly acknowledged as a limitation in Portainer's RBAC setup (`cluster-admin` as an accepted trade-off only in a homelab context)
 - **Secrets management**: Ansible Vault + `no_log`, as an alternative to hardcoding, with explicit acknowledgment that production would use a dedicated system (HashiCorp Vault, AWS Secrets Manager)
 - **Data persistence**: a PVC as a hard requirement for any stateful service, with SQLite's single-writer limitation as a concrete scaling example
+- **Fail-fast validation**: `--dry-run=client` as a cheap pre-check before applying changes to a live cluster
+- **Pull vs push automation**: Poll SCM chosen over a GitHub webhook specifically to avoid exposing the CI server publicly, consistent with the DNS-01/no-tunnel decision made for Vaultwarden
+- **Controller vs agent separation**: a conscious, stated trade-off — running steps directly on the Jenkins controller for a small, single-cluster homelab, while understanding why production setups separate execution onto dedicated or ephemeral agents
 
-## 9. Next steps
+## 10. Next steps
 
-- [ ] Jenkins — CI/CD pipeline replacing manual `kubectl apply`
+- [x] Jenkins — CI/CD pipeline replacing manual `kubectl apply`, with automatic trigger via Poll SCM
+- [ ] Extend the pipeline to cover the Portainer deployment as well
 - [ ] Prometheus + Grafana — cluster and container monitoring
 - [ ] Automated backups for persistent volumes (Kubernetes CronJob)
 - [ ] Full recovery test (destroy VM → recreate via Ansible + Jenkins)
+- [ ] Terraform — provisioning of the VMs themselves (currently out of scope; Ansible only configures VMs that already exist). Noted as a deliberate scope boundary rather than an oversight.
