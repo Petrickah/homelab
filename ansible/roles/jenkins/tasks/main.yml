@@ -1,0 +1,37 @@
+- name: Install Java
+  apt:
+    name: openjdk-21-jre-headless
+    state: present
+    update_cache: yes
+  become: true
+
+- name: Add Jenkins Repository
+  deb822_repository:
+    name: jenkins
+    types: deb
+    uris: https://pkg.jenkins.io/debian-stable
+    suites: binary/
+    architectures: amd64
+    signed_by: https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key
+  become: true
+
+- name: Install Jenkins
+  apt:
+    name: jenkins
+    state: present
+    update_cache: yes
+  become: true
+
+- name: Allow Jenkins Web UI through UFW
+  ufw:
+    rule: allow
+    port: "8080"
+    proto: tcp
+  become: true
+
+- name: Ensure Jenkins service is enabled and running
+  systemd:
+    name: jenkins
+    enabled: true
+    state: started
+  become: true

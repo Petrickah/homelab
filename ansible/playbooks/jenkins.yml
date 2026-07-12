@@ -1,0 +1,5 @@
+- name: Install and Configure Jenkins
+  hosts: jenkins
+  become: true
+  roles:
+    - jenkins
