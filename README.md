@@ -48,13 +48,16 @@ homelab/
 │   ├── playbooks/
 │   │   ├── baseline.yml
 │   │   ├── k3s.yml
-│   │   └── cert-manager.yml
+│   │   ├── cert-manager.yml
+│   │   └── jenkins.yml
 │   ├── roles/
 │   │   ├── baseline/
 │   │   ├── k3s/
-│   │   └── cert-manager/
+│   │   ├── cert-manager/
+│   │   └── jenkins/
 │   └── vars/
 │       └── vault.yml          # encrypted with Ansible Vault, no secrets in plaintext
+├── Jenkinsfile                 # declarative pipeline: checkout → validate → deploy → verify
 ├── k8s/
 │   ├── vaultwarden/
 │   │   ├── namespace.yaml
@@ -83,6 +86,7 @@ homelab/
 4. **k3s**: `ansible-playbook playbooks/k3s.yml` — installs k3s on the dedicated node and fetches the kubeconfig locally.
 5. **cert-manager**: create `ansible/vars/vault.yml` with the Cloudflare token (`ansible-vault create vars/vault.yml`), then `ansible-playbook playbooks/cert-manager.yml --ask-vault-pass`.
 6. **Applications**: `kubectl apply -f k8s/vaultwarden/` and `kubectl apply -f k8s/portainer/`.
+7. **Jenkins**: `ansible-playbook playbooks/jenkins.yml` — installs Jenkins and `kubectl` on the CI/CD node. After the setup wizard, add the kubeconfig as a "Secret file" credential (ID: `kubeconfig-k3s`) and create a Pipeline job pointing at this repository's `Jenkinsfile`.
 
 ## Security — key decisions
 
@@ -99,8 +103,10 @@ homelab/
 - [x] Automatic TLS (cert-manager + Let's Encrypt via DNS-01)
 - [x] Vaultwarden deployed, with persistence
 - [x] Portainer deployed, with RBAC
-- [ ] Jenkins pipeline for automated deployment (in progress)
+- [x] Jenkins pipeline for automated deployment, triggered automatically via Poll SCM
+- [ ] Extend the pipeline to Portainer
 - [ ] Monitoring (Prometheus + Grafana)
 - [ ] Automated backups for persistent volumes
+- [ ] Terraform for VM provisioning (currently out of scope — Ansible only configures VMs that already exist)
 
 Step-by-step details, including issues encountered and how they were fixed, are in [`docs/configuration-report.md`](docs/configuration-report.md).
