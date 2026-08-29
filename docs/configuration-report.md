@@ -308,5 +308,5 @@ The pipeline runs directly on the Jenkins controller (`agent any`), rather than 
 - [ ] Extend the pipeline to cover the Portainer deployment as well
 - [ ] Prometheus + Grafana — cluster and container monitoring
 - [ ] Automated backups for persistent volumes (Kubernetes CronJob)
-- [ ] Full recovery test (destroy VM → recreate via Ansible + Jenkins)
+- [x] Full recovery test (backup → destroy → restore), drilled 2026-08-29 — see [`disaster-recovery-runbook.md`](disaster-recovery-runbook.md). Note: proves the `vzdump` backup/restore path on a throwaway LXC, not a from-scratch Ansible rebuild — that remains open, see the runbook's own checklist.
 - [ ] Terraform — provisioning of the VMs themselves (currently out of scope; Ansible only configures VMs that already exist). Noted as a deliberate scope boundary rather than an oversight.

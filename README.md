@@ -104,9 +104,10 @@ homelab/
 - [x] Vaultwarden deployed, with persistence
 - [x] Portainer deployed, with RBAC
 - [x] Jenkins pipeline for automated deployment, triggered automatically via Poll SCM
+- [x] Disaster recovery drill (backup → destroy → restore, on a throwaway test container) — see [`docs/disaster-recovery-runbook.md`](docs/disaster-recovery-runbook.md)
 - [ ] Extend the pipeline to Portainer
 - [ ] Monitoring (Prometheus + Grafana)
 - [ ] Automated backups for persistent volumes
 - [ ] Terraform for VM provisioning (currently out of scope — Ansible only configures VMs that already exist)
 
-Step-by-step details, including issues encountered and how they were fixed, are in [`docs/configuration-report.md`](docs/configuration-report.md).
+Step-by-step details, including issues encountered and how they were fixed, are in [`docs/configuration-report.md`](docs/configuration-report.md). The tested recovery procedure is in [`docs/disaster-recovery-runbook.md`](docs/disaster-recovery-runbook.md).
